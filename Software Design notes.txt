@@ -1,0 +1,43 @@
+The CbusIO software allows a user to construct and send CBUS events and also to see the responses 
+from the CBUS modules.
+
+The program also allows macros to be written using a special scripting language. The same language 
+can also be used to perform automatic actions when events are seen on the CBUS.
+
+The default package contains the CBUSIO class which just calls the main method in the CbusIO class.
+CbusIO contains the user interface and constructs the Swing based UI.
+
+To explain the software consider a few scenarios:
+1) User constructs a CBUS event, sends it and sees a response.
+The Send button ActionListener collects the data set up on the ui combination boxes and calls the
+set..() methods on the CbusEvent class to construct a valid CBUS event. The CbusEvent is then placed
+on the transmit queue within the SerialHandler class. The SerialHandler class is responsible for
+opening a connection to the CANUSB which appears as a virtual serial port device. The software uses
+the JSSC library and jSSC-2.8_x86_64.dll native library.
+The transmit queue is a LinkedBlockingQueue which is thread safe.
+The SerialHandler creates a WriterThread instance to read the transmit queue and write to the serial 
+port. The WriterThread also writes to the UI StyledDocument log in black to indicate what was 
+transmitted - this is also thread safe.
+The SerialHandler also creates a ReaderThread which reads from the serial port. Whenever a Cbus message
+is received the ReaderThread passes the read message to all registered MessageListeners. The CbusIO
+UI class is a MessageListener which just writes the received message to the log. This updating is
+done within the Reader thread but this is ok since the StyledDocument is thread safe.
+
+2) The User selects a macro to execute
+Whenever a script file is loaded it is parsed and the set of macros within the CbusIO user interface is
+updated. When a macro is selected and the Do button is pressed then the selected macro is interpreted
+using the ScriptHandler class. A MacroRunner thread is created to execute the macro. Whenever a tx 
+statement is processed the specified message is transmitted simply by putting the message onto the 
+SerialHandler's transmit queue. If a txrx statement is processed the MacroRunner also registers itself
+as a  MessageListener with the ReaderThread via the SerialHandler. When the MacroRunner receives a message 
+the message is put into the MAcroRunner's inq by the Reader thread. The txrx statement can then perform 
+blocking reads (with a timeout) on the inq waiting for a received message which matches the specified filter.
+The script language is specified in the CbusIOparser.jjt file and JJTree and Javacc are used to construct
+the parser and Abstract Syntax Tree.
+
+3) A received message matches one specified in a receive(){} statement.
+The ScriptHandler registers itself as a MessageListener. Whenever a message is received the message
+is compared with the set of receive statement filters. If a match is found then a new ReceiveRunner
+thread is created to execute the associated receive script. The ReceiveRunner also registers itself
+as a MessageListener and any messages are put into its blocking inq by the Reader thread.
+

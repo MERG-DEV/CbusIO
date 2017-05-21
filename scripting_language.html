@@ -1,0 +1,119 @@
+Cbus Scripting Language (SCT)
+
+A script file contains:
+•	Import statements to load other scripts
+•	Comments
+•	Macro definitions
+•	Receive action definitions
+
+A macro is run when requested by the user from the graphical user interface.
+A receive action is run when the filter of the receive matches an event seen on the Cbus.
+
+A macro is defined using the “macro” keyword, the name of the macro and a block of statements to run:
+
+macro(“macro name”) {
+     Block of statements
+}
+
+A receive action is defined using the “receive” keyword, a regular expression against which to match received events and a block of statements to run:
+
+receive(“regular expression filter”) {
+     Block of statements
+}
+
+Literals
+A string literal is written between double quote characters. E.g. “a string literal”.
+A decimal integer literal is written as a number with no leading zeros. E.g. 10 
+A hexadecimal integer is written with a leading 0x followed by 0-9 and A-F characters. E.g. 0xFFFF
+
+Statements
+The following statements are supported:
+•	Variable assignment
+varname = expression;
+•	Transmit
+tx(message_string_expression);
+•	TransmitReceive
+txrx(message_string_expression) receive(filter_string_expression) { block to be executed when a cbus event matching the filter is received} timeout(integer_expression in milliseconds) {block to be executed if no matching event is received before the timeout is reached}
+•	If 
+if (condition_boolean_expression) {block to be executed if the expression is true}
+•	ifelse
+if (condition_boolean_expression) {block to be executed if the expression is true} else {block executed if the condition is false}
+•	Pause
+pause (delay_integer_expression);
+•	Execute
+execute (commad_string_expression);
+•	Prompt
+prompt type message_string_expression;
+
+A prompt type may be one of:
+ok        Just an “OK” button is shown
+yesno      “Yes” and “No” buttons are shown. The prompt statement returns either “yes” or “no” depending upon which button was pressed.
+string     A text entry area and an OK button is shown. The prompt statement returns the text the user entered.
+integer    A text entry area and an OK button is shown. The prompt statement returns the integer the user entered.
+
+Operators
+String, Boolean and Integer equality: ==, !=, 
+Integer comparison: >, >=, <, <=
+String concatenation: +
+Integer arithmetic: +. -, *, /, ++, --, >>, <<, >>>
+Parentheses: ()
+Bit operators: |, &
+Unary: -, !, ~
+Logical: &&, ||
+
+Type Conversion
+Automatic type conversion is done where possible. E.g. 2 * ”3” would give the result 6
+“2” + “3” gives the result “23”
+2 + 3 gives the result 5
+“2” + 3 gives the result “23”
+
+Single character string : char(integer)
+2 character hexadecimal string : hex1(integer)
+4 character hexadecimal string : hex2(integer)
+
+Variables
+Variables may be defined using the assignment statement. Variables may be used by putting their name into an expressions:
+number = 7;
+prompt ok “Number = ”+number;
+
+Within a receive block the variable “this” is set to be the cbus event which matched the filter, triggering the receive block.
+
+Cbus events
+Cbus events have the format:
+“:ShhhhNood1d2d3d4d5d6d7;”
+Where 
+•	:, S, N and ; are this explicit characters.
+•	h is a hexadecimal number forming the SIDH and SIDL of the CAN header.
+•	o is a hexadecimal number forming the OPC
+•	d1 to d7 are hexadecimal numbers forming the event data. These are optional.
+
+The event data may be extracted from a message using the [] operator. For example
+message[1] would extract the first data byte from message as an integer.
+message[1]<<8|message[2] obtains the first two data bytes as a 16bit integer. This is useful to extract the Node Number from a message. 
+The OPC integer can be obtained using message[opc].
+
+Filters
+A receive or a txrx filter is a regular expression string which is used to match against a Cbus event. A typical filter would be:
+“:S….N50.*” to match any OPC=50 i.e. RQNN command
+
+Regular expression
+See http://en.wikipedia.org/wiki/Regular_expression
+And
+http://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html
+
+Comments
+// introduces a comment which extends until the end of the line
+/* introduces a comment which extends until a */ sequence is found
+
+Examples
+macro(“Turn ON”) {
+     tx(“:S0B20N9011112222;”);
+}
+macro(“Turn OFF”) {
+     tx(“:S0B20N9111112222;”);
+}
+Receive(“:S….N50.*”) {          // RQNN
+     nn = prompt integer “Enter a node number”);
+     tx(“:S0B20N42”+hex2(nn));  // SNN
+}
+

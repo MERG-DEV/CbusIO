@@ -1,0 +1,527 @@
+// TestParser.jjt
+
+
+options {
+  MULTI=true;
+  VISITOR=true;
+  NODE_DEFAULT_VOID=true;
+  STATIC=false;
+}
+
+PARSER_BEGIN(ScriptParser)
+package co.uk.ccmr.cbusio.sniffer.parser;
+
+import co.uk.ccmr.cbusio.script.Value;
+
+public class ScriptParser {
+  public static void main(String[] args) throws ParseException {
+    ScriptParser parser = new ScriptParser(new java.io.StringReader(args[0]));
+    SimpleNode root = parser.program();
+    root.dump("");
+  }
+}
+
+PARSER_END(ScriptParser)
+
+TOKEN :
+{
+   < EQUIVALENT 	: "==" >
+ | < NOTEQUIVALENT 	: "!=" >
+ | < LESSTHAN 		: "<" >
+ | < LESSTHANEQUAL 	: "<=" >
+ | < GREATERTHAN 	: ">" >
+ | < GREATERTHANEQUAL : ">=" >
+ | < LBRACKET  		: "[" > 
+ | < RBRACKET  		: "]" >
+ | < LPAREN   		: "(" >
+ | < RPAREN   		: ")" >
+ | < LBRACE   		: "{" >
+ | < RBRACE   		: "}" >
+ | < SEMICOLON  	: ";" >
+ | < COMMA  		: "," >
+ | < PLUS   		: "+" >
+ | < MINUS   		: "-" >
+ | < EQUALS    		: "=" > 
+ | < TX 			: "tx" >
+ | < TXRX 			: "txrx" >
+ | < PAUSE 			: "pause" >
+ | < PROMPT 		: "prompt" >
+ | < EXECUTE 		: "execute" >
+ | < INCLUDE 		: "include" >
+ | < RECEIVE 		: "receive" >
+ | < TIMEOUT 		: "timeout" >
+ | < MACRO	 		: "macro" >
+ | < OK		 		: "ok" >
+ | < YESNO	 		: "yesno" >
+ | < STRING	 		: "string" >
+ | < INT	 		: "int" >
+ | < IF 			: "if" >
+ | < ELSE 			: "else" >
+ | < OPC 			: "opc" >
+ | < CHAR 			: "char" >
+ | < HEX1 			: "hex1" >
+ | < HEX2 			: "hex2" >
+ | < MID 			: "mid" >
+ | < THIS 			: "this" >
+ | < IDENTIFIER    	: ("_" | <LETTER>) ("_" | <ALPHANUM>)* >
+ |  < STRING_LITERAL:
+      "\""
+      (   (~["\"","\\","\n","\r"])
+        | ("\\"
+            ( ["n","t","b","r","f","\\","'","\""]
+            | ["0"-"7"] ( ["0"-"7"] )?
+            | ["0"-"3"] ["0"-"7"] ["0"-"7"]
+            )
+          )
+      )*
+      "\""
+  >
+// | < STRING_LITERAL 	: "\"" ( <ALPHANUM> | " " | ":")* "\"" >
+ | < INTEGER_LITERAL:
+        <DECIMAL_LITERAL> 
+      | <HEX_LITERAL> 
+      | <OCTAL_LITERAL> >
+}
+
+
+TOKEN :
+{
+   < #DIGIT    : ["0"-"9"] >
+ | < #LETTER   : ["a"-"z","A"-"Z"] >
+ | < #HEXLETTER : ["a"-"f","A"-"F"] >
+ | < #ALPHANUM : <LETTER> | <DIGIT> >
+ | < #HEXDIGIT : <HEXLETTER> | <DIGIT> >
+ | < #DECIMAL_LITERAL: ["1"-"9"] (["0"-"9"])* >
+ | < #HEX_LITERAL: "0" ["x","X"] (["0"-"9","a"-"f","A"-"F"])+ >
+ | < #OCTAL_LITERAL: "0" (["0"-"7"])* >
+}
+
+SKIP : { 
+ " " 
+| "\t" 
+| "\r" 
+| "\n" 
+| <"//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
+| <"/*" (~["*"])* "*" (~["/"] (~["*"])* "*")* "/">
+}
+
+ASTProgram program() #Program :
+{}
+{
+  (action())* <EOF> {return jjtThis;}
+}
+
+void action() #Action :
+{}
+{
+	receive()
+  | macro()
+  | include()
+}
+
+void include() #Include :
+{Token t=null;}
+{
+	<INCLUDE> <LPAREN> t=<STRING_LITERAL> <RPAREN> <SEMICOLON> {jjtThis.value = t.image; }
+	  
+}
+ASTReceive receive() #Receive :
+{Token t=null;}
+{
+	<RECEIVE> <LPAREN> t=<STRING_LITERAL> <RPAREN> block() {jjtThis.trigger = t.image.substring(1,t.image.length()-1); return jjtThis;}	  
+}
+
+ASTMacro macro() #Macro :
+{Token t;}
+{
+	<MACRO> <LPAREN> t=<STRING_LITERAL> <RPAREN> block() {jjtThis.name = t.image.substring(1,t.image.length()-1); return jjtThis;}
+}
+
+
+void block() #Block :
+{}
+{
+  <LBRACE> (statement())* <RBRACE> 
+}
+
+void statement() #Statement :
+{}
+{
+  ifStatement()
+  | pause() <SEMICOLON>
+  | execute() <SEMICOLON>
+  | tx() <SEMICOLON>
+  | txrx()
+  | prompt() <SEMICOLON>
+  | assign() <SEMICOLON>
+}
+
+void ifStatement() #IfStatement :
+{}
+{
+  <IF> Expression() block() [ LOOKAHEAD(1) <ELSE> block() ]
+}
+
+void pause() #Pause :
+{}
+{
+  <PAUSE> <LPAREN> Expression() <RPAREN>
+}
+
+void execute() #Execute :
+{}
+{
+  <EXECUTE> <LPAREN> Expression() <RPAREN>
+}
+
+void tx() #Tx :
+{}	
+{
+	<TX> <LPAREN> message() <RPAREN>
+}
+
+void txrx() #Txrx :
+{}
+{
+	<TXRX> <LPAREN> message() <RPAREN>  <RECEIVE> message() block() timeout() block() 
+}
+
+void prompt() #Prompt :
+{}
+{
+	<PROMPT> <LPAREN> type() <COMMA> Expression() <RPAREN>
+}
+
+void type() #Type :
+{Token t=null;}
+{
+	t=<OK> {jjtThis.value = t.image;}
+	| t=<YESNO> {jjtThis.value = t.image;}
+	| t=<STRING>{jjtThis.value = t.image;}
+	| t=<INT>{jjtThis.value = t.image;}
+}
+
+void assign() #Assign :
+{Token t;}
+{
+	t=<IDENTIFIER> <EQUALS> Expression() {jjtThis.value = t.image;}
+}
+
+void message() #Message :
+{}
+{
+	Expression()
+}
+
+void timeout() #Timeout :
+{}
+{
+	<TIMEOUT> <LPAREN> Expression() <RPAREN> 
+}
+
+/*void expression() #Expression :
+{}
+{
+	LOOKAHEAD(2)
+	stringExpression()
+	| integerExpression()
+}
+
+void stringExpression() #StringExpression :
+{Token t=null;}
+{
+	stringPart() [ LOOKAHEAD(1) t=<PLUS> {jjtThis.value = t.image;} stringExpression() ] 
+}
+
+void stringPart() #StringPart :
+{Token t=null;}
+{
+	t=<STRINGLITERAL> {jjtThis.value = t.image.substring(1,t.image.length()-1);}
+	| prompt()
+	| t=<THIS>
+	| t=<VARNAME> {jjtThis.value = t.image;}
+} 
+
+void accessor() #Accessor :
+{Token t=null;}
+{
+	LOOKAHEAD(2) <LBRACKET> Expression() <RBRACKET> {jjtThis.value = null;}
+	| <LBRACKET> t=<OPC> <RBRACKET> {jjtThis.value = t.image;}
+}
+
+
+void integerExpression() #IntegerExpression :
+{Token t=null;}
+{
+	intPart() [ LOOKAHEAD(1) (t=<PLUS> {jjtThis.value = t.image;}| t=<MINUS>{jjtThis.value = t.image;}) integerExpression() ] 
+}
+
+void intPart() #IntPart :
+{Token t;}
+{
+	t=<HEXLITERAL> {jjtThis.value = t.image;}
+	| t=<THIS> accessor() {jjtThis.value = t.image;}
+	| t=<VARNAME> [ accessor() ] {jjtThis.value = t.image;}
+}
+
+void booleanExpression() #BooleanExpression :
+{}
+{
+	LOOKAHEAD(3) stringExpression() strComparator() stringExpression()
+	| integerExpression() intComparator() integerExpression()
+
+}
+
+void intComparator() #IntComparator :
+{Token t=null;}
+{
+	<EQUIVALENT> 			{jjtThis.value = t.image;}
+	| <NOTEQUIVALENT>		{jjtThis.value = t.image;}
+	| <LESSTHAN>			{jjtThis.value = t.image;}
+	| <LESSTHANEQUAL>		{jjtThis.value = t.image;}
+	| <GREATERTHAN>			{jjtThis.value = t.image;}
+	| <GREATERTHANEQUAL>	{jjtThis.value = t.image;}
+}
+void strComparator() #StrComparator :
+{Token t=null;}
+{
+	<EQUIVALENT>			{jjtThis.value = t.image;}
+	| <NOTEQUIVALENT>		{jjtThis.value = t.image;}
+}*/
+
+void Name() #Name :
+{Token t;}
+{
+  t=<IDENTIFIER>   {jjtThis.value = t.image;}
+}
+
+/*
+ * Expression syntax follows.
+ */
+
+void Expression() #Expression :
+/*
+ * This expansion has been written this way instead of:
+ *   Assignment() | ConditionalExpression()
+ * for performance reasons.
+ * However, it is a weakening of the grammar for it allows the LHS of
+ * assignments to be any conditional expression whereas it can only be
+ * a primary expression.  Consider adding a semantic predicate to work
+ * around this.
+ */
+{}
+{
+  ConditionalOrExpression()
+}
+
+void ConditionalOrExpression() #ConditionalOrExpression :
+{}
+{
+  ConditionalAndExpression() ( "||" ConditionalAndExpression() )*
+}
+
+void ConditionalAndExpression() #ConditionalAndExpression :
+{}
+{
+  InclusiveOrExpression() ( "&&" InclusiveOrExpression() )*
+}
+
+void InclusiveOrExpression() #InclusiveOrExpression :
+{}
+{
+  ExclusiveOrExpression() ( "|" ExclusiveOrExpression() )*
+}
+
+void ExclusiveOrExpression() #ExclusiveOrExpression :
+{}
+{
+  AndExpression() ( "^" AndExpression() )*
+}
+
+void AndExpression() #AndExpression :
+{}
+{
+  EqualityExpression() ( "&" EqualityExpression() )*
+}
+
+void EqualityExpression() #EqualityExpression :
+{Token t;}
+{
+  RelationalExpression() ( ( t="=="  {    jjtThis.value = t.image;  }  | t="!=" {
+    jjtThis.value = t.image;
+  }) RelationalExpression() )*
+}
+
+void RelationalExpression() #RelationalExpression :
+{Token t;}
+{
+  ShiftExpression() ( ( t="<" {
+    jjtThis.value = t.image;
+  }
+  | t=">"
+  {
+    jjtThis.value = t.image;
+  }
+  | t="<=" {
+    jjtThis.value = t.image;
+  }
+  | t=">=" {
+    jjtThis.value = t.image;
+  }) ShiftExpression() )*
+}
+
+void ShiftExpression() #ShiftExpression :
+{Token t;}
+{
+  AdditiveExpression() ( ( t="<<" {
+    jjtThis.value = t.image;
+  }
+  | t=">>" {
+    jjtThis.value = t.image;
+  }
+  | t=">>>" {
+    jjtThis.value = t.image;
+  }) AdditiveExpression() )*
+}
+
+void AdditiveExpression() #AdditiveExpression :
+{Token t;}
+{
+  MultiplicativeExpression() ( ( t="+" {
+    jjtThis.value = t.image;
+  }
+  | t="-" {
+    jjtThis.value = t.image;
+  }) MultiplicativeExpression() )*
+}
+
+void MultiplicativeExpression() #MultiplicativeExpression:
+{Token t;}
+{
+  UnaryExpression() ( ( t="*" {
+    jjtThis.value = t.image;
+  }
+  | t="/" {
+    jjtThis.value = t.image;
+  }
+  | t="%" {
+    jjtThis.value = t.image;
+  }) UnaryExpression() )*
+}
+
+void UnaryExpression() #UnaryExpression :
+{Token t;}
+{
+  ( t="+" {
+    jjtThis.value = t.image;
+  }| t="-" {
+    jjtThis.value = t.image;
+  }) UnaryExpression()
+|
+  {    jjtThis.value = null;  }  PreIncrementExpression()
+|
+  {
+    jjtThis.value = null;
+  }
+  PreDecrementExpression()
+|
+  {
+    jjtThis.value = null;
+  }
+  UnaryExpressionNotPlusMinus()
+}
+
+void PreIncrementExpression() #PreIncrementExpression :
+{}
+{
+  "++" PrimaryExpression()
+}
+
+void PreDecrementExpression() #PreDecrementExpression :
+{}
+{
+  "--" PrimaryExpression()
+}
+
+void UnaryExpressionNotPlusMinus() #UnaryExpressionNotPlusMinus :
+{Token t=null;jjtThis.value = null;}
+{
+  ( t="~"  {    jjtThis.value = t.image;  }  | t="!"  {    jjtThis.value = t.image;  }) UnaryExpression()
+
+|
+  PostfixExpression()
+}
+
+void PostfixExpression() #PostfixExpression :
+{Token t=null;jjtThis.value = null;}
+{
+  PrimaryExpression() [ t="++" {
+    jjtThis.value = t.image;
+  }
+  | t="--" {
+    jjtThis.value = t.image;
+  }]
+}
+
+void PrimaryExpression() #PrimaryExpression :
+{}
+{
+  PrimaryPrefix() [ LOOKAHEAD(2) PrimarySuffix() ]
+}
+
+void PrimaryPrefix() #PrimaryPrefix :
+{Token t=null;}
+{
+  Literal()
+|
+  t="this"  {    jjtThis.value = t.image;  }  
+|
+  "(" Expression() ")"
+|
+   Name()
+|  prompt()
+|  CharConversion()
+|  Hex1Conversion()
+|  Hex2Conversion()
+|  Mid()
+}
+
+/* Functions
+ */
+void CharConversion() #CharConversion :
+{}
+{  <CHAR> <LPAREN> Expression() <RPAREN>
+}
+void Hex1Conversion() #Hex1Conversion :
+{}
+{
+  <HEX1> <LPAREN> Expression() <RPAREN>
+}
+void Hex2Conversion() #Hex2Conversion :
+{}
+{
+  <HEX2> <LPAREN> Expression() <RPAREN>
+}
+void Mid() #Mid :
+{}
+{
+  <MID> <LPAREN> Expression() <COMMA> Expression() <COMMA> Expression() <RPAREN>
+}
+
+/* Add "." "super" to be compatible with Java 1.2, 
+ * Modified by Marco Savard
+ */ 
+void PrimarySuffix() #PrimarySuffix :
+{}
+{
+  LOOKAHEAD(2) "[" Expression() "]"
+	| <LBRACKET> <OPC> <RBRACKET> 
+}
+
+void Literal() #Literal :
+{Token t;}
+{
+  t=<INTEGER_LITERAL>  {    jjtThis.value = new Value(Integer.parseInt(t.image));  }  
+|
+  t=<STRING_LITERAL>  {    jjtThis.value = new Value(t.image.substring(1,t.image.length()-1));  }  
+}

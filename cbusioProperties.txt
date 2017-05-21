@@ -1,0 +1,7 @@
+#CBUSIO properties
+#Mon Apr 27 18:46:51 BST 2015
+defaultBase=16
+driver=co.uk.ccmr.cbus.driver.fazecastSerial.FazecastSerialCbusDriver
+#driver=co.uk.ccmr.cbus.driver.jsscSerial.JsscSerialCbusDriver
+#driver=co.uk.ccmr.cbus.driver.tcp.TcpCbusDriver
+#autoconnect=/dev/ttyACM0
