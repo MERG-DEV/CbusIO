@@ -1,0 +1,14 @@
+#Fat Jar Configuration File
+#Thu Mar 31 19:49:53 BST 2016
+onejar.license.required=true
+manifest.classpath=
+manifest.removesigners=true
+onejar.checkbox=false
+jarname=CbusIO_fat.jar
+manifest.mergeall=true
+manifest.mainclass=CBUSIO
+manifest.file=<createnew>
+jarname.isextern=false
+onejar.expand=
+excludes=
+includes=
