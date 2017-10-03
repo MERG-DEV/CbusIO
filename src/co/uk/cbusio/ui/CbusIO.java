@@ -70,7 +70,9 @@ import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.Box;
 import javax.swing.ButtonGroup;
@@ -113,7 +115,7 @@ import co.uk.ccmr.cbusio.script.ScriptHandler;
 import co.uk.ccmr.cbusio.sniffer.parser.ASTMacro;
 
 public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener, MacroChangeListener {
-	protected static final String VERSION = "2.1b";
+	protected static final String VERSION = "2.1c";
 	private static final String DEFAULT_SCRIPT = "/defaultScript.sct";
 	private static final int MAX_LINES = 100;
 	private static int port = 5550;
@@ -136,6 +138,8 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 	private CbusIO self = null;
 	private Container connectMenu;
 	private AttributeSet redAset;
+	private JPanel buttons;
+	private Opc prevOpc = null;
 	
 	/**
 	 * Basic constructor.
@@ -217,10 +221,9 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
         frame = new JFrame("CBUS I/O");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
  
-        //Create the menu bar.  Make it have a green background.
+        //Create the menu bar.  
         JMenuBar menuBar = new JMenuBar();
         menuBar.setOpaque(true);
-        menuBar.setPreferredSize(new Dimension(200, 20));
         
         //File menu
         JMenu menu = new JMenu("File");
@@ -373,10 +376,10 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
         menuBar.add(menu);
         
         panel = new JPanel(new BorderLayout());
-        panel.setPreferredSize(new Dimension(1200, 450));
+//        panel.setPreferredSize(new Dimension(1200, 450));
         
         // the buttons to construct a message
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         
         JLabel label = new JLabel("Mj Pri:");
         buttons.add(label);
@@ -498,6 +501,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 		String scriptFilename = System.getProperty("user.dir");
 		scriptFilename += DEFAULT_SCRIPT;
 		scriptHandler.load(new File(scriptFilename), log);
+		frame.setSize(new Dimension(1200, 450));
     }
  
 	/** 
@@ -527,6 +531,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 	public void actionPerformed(ActionEvent event) {
 		Opc opc = (Opc) opcCombo.getSelectedItem();
 		setupParams(opc);
+		prevOpc  = opc;
 	}
 	
 	/**
@@ -535,15 +540,31 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 	 * @param opc
 	 */
 	private void setupParams(Opc opc) {
+		// save any current text so we can reinstate it in the same text fields
+		Map<String, String> fields = new HashMap<String, String>();
+		if (prevOpc != null) {
+			int idx = 0;
+			for (ParamNameAndLen p : prevOpc.getParams()) {
+				if (textFields == null) break;
+				JTextField tf = textFields.get(idx);
+				String text = tf.getText();
+				fields.put(p.getName(), text);
+				idx++;
+			}
+		}
+		
 		params.removeAll();
 		textFields = new ArrayList<JTextField>();
 		for (ParamNameAndLen pp : opc.getParams()) {
 			JLabel label = new JLabel(pp.getName());
-			JTextField text = new JTextField(pp.getLen() *2 + 2);
+			String fieldText = fields.get(pp.getName());
+			JTextField text = new JTextField(fieldText==null?"":fieldText, pp.getLen() *2 + 2);
 			params.add(label);
 			params.add(text);
 			textFields.add(text);
 		}
+		//params.validate();
+		frame.setPreferredSize(frame.getSize());
 		frame.pack();
 	}
 
