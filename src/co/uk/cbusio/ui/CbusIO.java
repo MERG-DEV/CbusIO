@@ -186,7 +186,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 		} else {
 			System.out.println("Using driver "+clazz);
 			try {
-				log.insertString(log.getLength(), "Using driver "+clazz+"\n", redAset);
+				log.insertString(0, "Using driver "+clazz+"\n", redAset);
 			} catch (BadLocationException e) {
 				e.printStackTrace();
 			}
@@ -194,7 +194,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 		String portName = OptionsImpl.getOptions(log, args).getAutoConnect();
 		if (portName != null) {
 			try {
-				log.insertString(log.getLength(), "Auto Opening port "+portName+"\n", redAset);
+				log.insertString(0, "Auto Opening port "+portName+"\n", redAset);
 			} catch (BadLocationException e2) {
 				e2.printStackTrace();
 			}
@@ -205,7 +205,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 			} catch (CbusDriverException e2) {
 				e2.printStackTrace();
 				try {
-					log.insertString(log.getLength(), e2.getMessage()+"\n", null);
+					log.insertString(0, e2.getMessage()+"\n", null);
 				} catch (BadLocationException e) {
 					e.printStackTrace();
 				}
@@ -442,7 +442,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 					theDriver.queueForTransmit(cmd);
 				} catch (NumberFormatException nfe) {
 					try {
-						log.insertString(log.getLength(), "Invalid number format:"+text+"\n", redAset);
+						log.insertString(0, "Invalid number format:"+text+"\n", redAset);
 					} catch (BadLocationException e) {
 						e.printStackTrace();
 					}
@@ -581,7 +581,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 		switch(event.getStateChange()) {
 		case ItemEvent.SELECTED:
 			try {
-				log.insertString(log.getLength(), "Opening port "+portName+"\n", redAset);
+				log.insertString(0, "Opening port "+portName+"\n", redAset);
 			} catch (BadLocationException e2) {
 				e2.printStackTrace();
 			}
@@ -592,7 +592,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
 			} catch (CbusDriverException e2) {
 				e2.printStackTrace();
 				try {
-					log.insertString(log.getLength(), e2.getMessage(), null);
+					log.insertString(0, e2.getMessage(), null);
 				} catch (BadLocationException e) {
 					e.printStackTrace();
 				}
@@ -613,8 +613,8 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
     	AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY,
     	                                        StyleConstants.Foreground, new Color(0,0x80,0));
 		try {
-			log.insertString(log.getLength(), "< "+cmd.toString()+"\n", aset);
-			log.insertString(log.getLength(), "< "+cmd.dump(OptionsImpl.getOptions(log, null).getBase())+"\n", aset);
+			log.insertString(0, "< "+cmd.toString()+"\n", aset);
+			log.insertString(0, "< "+cmd.dump(OptionsImpl.getOptions(log, null).getBase())+"\n", aset);
 		} catch (BadLocationException e) {
 			e.printStackTrace();
 		}
@@ -626,7 +626,7 @@ public class CbusIO implements ActionListener, ItemListener, CbusReceiveListener
     	AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY,
     	                                        StyleConstants.Foreground, new Color(0x80,0,0));
 		try {
-			log.insertString(log.getLength(), "< "+input+"\n", aset);
+			log.insertString(0, "< "+input+"\n", aset);
 		} catch (BadLocationException e) {
 			e.printStackTrace();
 		}

@@ -101,7 +101,7 @@ public class ScriptHandler implements CbusReceiveListener {
 					AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY,
 							StyleConstants.Foreground, new Color(0x80,0,0));
 					try {
-						log.insertString(log.getLength(), "Loaded script file "+script.getAbsolutePath()+"\n", aset);
+						log.insertString(0, "Loaded script file "+script.getAbsolutePath()+"\n", aset);
 					} catch (BadLocationException e2) {
 						// TODO Auto-generated catch block
 						e2.printStackTrace();
@@ -113,8 +113,8 @@ public class ScriptHandler implements CbusReceiveListener {
 					AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY,
 		    	                                        StyleConstants.Foreground, Color.RED);
 					try {
-						log.insertString(log.getLength(), "Failed to parse script "+script.getAbsolutePath()+"\n", aset);
-						log.insertString(log.getLength(), e.getMessage(), aset);
+						log.insertString(0, "Failed to parse script "+script.getAbsolutePath()+"\n", aset);
+						log.insertString(0, e.getMessage(), aset);
 					} catch (BadLocationException e2) {
 						// TODO Auto-generated catch block
 						e2.printStackTrace();
@@ -128,7 +128,7 @@ public class ScriptHandler implements CbusReceiveListener {
 				AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY,
 	    	                                        StyleConstants.Foreground, Color.RED);
 				try {
-					log.insertString(log.getLength(), "Script file "+script.getAbsolutePath()+" not found\n", aset);
+					log.insertString(0, "Script file "+script.getAbsolutePath()+" not found\n", aset);
 				} catch (BadLocationException e2) {
 					// TODO Auto-generated catch block
 					e2.printStackTrace();
